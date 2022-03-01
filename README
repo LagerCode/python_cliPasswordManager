@@ -1,0 +1,12 @@
+Connection to DB server
+
+on server side:
+1. set static ip
+2. allow 3306 through firewall
+3. edit sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf bind address from 127.0.0.1 to wildcard 0.0.0.0
+4. add user with CREATE USER 'user'@'%' IDENTIFIED BY 'password';
+5. give user permission to db by GRANT ALL PRIVILEGES ON database_name.* TO 'username'@'%';
+
+on client side:
+1. set in python: db = pymysql.connect(host="server_ip",user="user",password="password",database="database_name")
+cursor = db.cursor()
