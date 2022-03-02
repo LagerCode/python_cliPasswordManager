@@ -1,77 +1,92 @@
 import random
-import pymysql
+import mysql.connector
+import time
+import getpass
 
 #initial authentication when running program
 loginUser = input("username: ")
-loginPassword = input("password: ")
-db = pymysql.connect(host="192.168.0.191",user=loginUser,password=loginPassword,database="PyPasswordGenerator")
-cursor = db.cursor()
+loginPassword = getpass.getpass("password: ")
+try:
+    dbconn = mysql.connector.connect(host="192.168.0.191",
+    user=loginUser,
+    password=loginPassword,
+    database="PyPasswordGenerator")
+except mysql.connector.Error as err:
+  if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+    print("Invalid login")
+  elif err.errno == errorcode.ER_BAD_DB_ERROR:
+    print("Connection to Database could not be found")
+  else:
+    print(err)
+else:
+  dbconn.close()
+
+dbconn.reconnect()
+cursor = dbconn.cursor()
 
 
 #adding login details in db
 def addLogin():
     name = input("name: ")
     username = input("username: ")
-    passChoice = input("do you wish to generate a new password or enter current password?\n \
-    1. generate new(default)\n\n \
-        2. enter current password")
     securitykey = input("enter optional securitykey: ")
     
-    passChoiceInput = input(": ")
-    if passChoiceInput == 1:
-        #function to generate password
-        char = 'abcdefghijklmnopqrstvwxyzåäö123456789"!¤%&/()=?*><'
-        generatedPassword = random.choice(char)
-
-        print("your new password is "+char)
-        finalpassword = generatedPassword
-    if passChoiceInput == 2:
-        print("enter your current password")
-        currentpasswordinput= input(": ")
-        finalpassword = currentpasswordinput
-
     
-    sql = "INSERT INTO SavedLogin(username,password,securitykey)VALUES (, "+name+", "+finalpassword+", "+securitykey+")"
-    try:
-        cursor.execute(query=sql)
-        db.commit()
-    except:
-        print("action could not be made")
-        db.rollback()
-
+    char = 'abcdefghijklmnopqrstvwxyzåäö123456789"!¤%&/()=?*><'
+    for i in range(15):
+        generatedPassword += random.choice(char)
+        print("your new password is "+generatedPassword)
+    finalpassword = generatedPassword
     
-addLogin()
+    add_loginDetails = ("INSERT INTO SavedLogin "
+                        "(username, password, securitykey, name) "
+                        "VALUES (%s, %s, %s, %s)")
+    data_loginDetails = (username, finalpassword, securitykey, name)
+    cursor.execute(add_loginDetails, data_loginDetails)
+    dbconn.commit()
+    cursor.close()
+    dbconn.close()
+
+
 #print table details on request
 def readTable():
-    sql = "SELECT * FROM SavedLogin"
-    try:
-        cursor.execute(query=sql)
-        results = cursor.fetchall()
-        for row in results:
-            dbusername = row[0]
-            dbpassword = row[1]
-            dbsecuritykey = row[2]
-            print ("username = %s,password = %s,securitykey = %d" % \
-                (dbusername, dbpassword, dbsecuritykey ))
-    except:
-        print("Error: unable to fetch data")
+    query = ("SELECT * FROM SavedLogin")
+    cursor.execute(query)
+    
+    
+    for row in cursor:
+            dblogin_id = row[0]
+            dbusername = row[1]
+            dbpassword = row[2]
+            dbsecuritykey = row[3]
+            dbname = row[4]
+            print ("login_id = %s,\nusername = %s,\npassword = %s,\nsecuritykey = %s,\nname = %s\n\n\n" % \
+                (dblogin_id, dbusername, dbpassword, dbsecuritykey, dbname))
+
 
 programActive = 1
 #show menu options
-while programActive == 1:
-    print("MENU")
-    print("1. add login","\n\n")
-    print("2. show logins","\n\n")
-    print("3. quit program","\n\n")
-    userInput = input(": ")
+def menu():
+    while programActive == 1:
+        print("MENU")
+        print("1. add login","\n")
+        print("2. show logins","\n")
+        print("3. quit program","\n\n")
+        userInput = input(": ")
 
-    if userInput == 1:
-        addLogin()
-    if userInput == 2:
-        readTable()
-    if userInput == 3:
-        db.close()
-        programActive == 0
-        exit()
-    else:
-        print("please choose valid option")
+        if userInput == '1':
+            addLogin()
+            userInput = input("enter any key to continue")
+            menu()
+        if userInput == '2':
+            readTable()
+            userInput = input("enter any key to continue")
+            menu()
+        if userInput == '3':
+            dbconn.close()
+            programActive == 0
+            exit()
+        else:
+            print("please choose valid option")
+            time.sleep(2)
+menu()
